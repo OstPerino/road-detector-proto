@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package road_marking;
+
+option go_package = "github.com/road-detector/proto/road_marking";
+
+// Координаты точки
+message Coordinates {
+    double lat = 1;  // Широта
+    double lon = 2;  // Долгота
+}
+
+// Запрос на анализ дорожной разметки
+message AnalyzeRoadMarkingRequest {
+    bytes video_data = 1;                    // Данные видеофайла
+    string video_filename = 2;               // Имя видеофайла
+    Coordinates start_point = 3;             // Начальная точка маршрута
+    Coordinates end_point = 4;               // Конечная точка маршрута
+    int32 segment_length_m = 5;              // Длина сегмента в метрах
+}
+
+// Информация о сегменте
+message SegmentInfo {
+    int32 segment_id = 1;                    // ID сегмента
+    int32 frames_count = 2;                  // Количество кадров в сегменте
+    double coverage_percentage = 3;          // Процент покрытия разметкой
+    bool has_data = 4;                       // Есть ли данные в сегменте
+    Coordinates start_coordinate = 5;        // Начальная координата сегмента
+    Coordinates end_coordinate = 6;          // Конечная координата сегмента
+}
+
+// Общая статистика
+message OverallStats {
+    int32 total_frames = 1;                  // Общее количество кадров
+    double total_distance_meters = 2;        // Общее расстояние в метрах
+    int32 segment_length_meters = 3;         // Длина сегмента в метрах
+    int32 total_segments = 4;                // Общее количество сегментов
+    int32 segments_with_data = 5;            // Количество сегментов с данными
+    double average_coverage = 6;             // Средний процент покрытия
+}
+
+// Ответ с результатами анализа
+message AnalyzeRoadMarkingResponse {
+    string status = 1;                       // Статус операции
+    OverallStats overall_stats = 2;          // Общая статистика
+    repeated SegmentInfo segments = 3;       // Информация о сегментах
+    Coordinates start_coordinates = 4;       // Начальные координаты
+    Coordinates end_coordinates = 5;         // Конечные координаты
+    string error_message = 6;                // Сообщение об ошибке (если есть)
+}
+
+// Запрос на проверку здоровья сервиса
+message HealthCheckRequest {
+}
+
+// Ответ проверки здоровья
+message HealthCheckResponse {
+    string status = 1;                       // Статус сервиса
+    bool model_loaded = 2;                   // Загружена ли модель
+    string version = 3;                      // Версия сервиса
+}
+
+// Сервис для анализа дорожной разметки
+service RoadMarkingService {
+    // Анализ дорожной разметки в видео
+    rpc AnalyzeRoadMarking(AnalyzeRoadMarkingRequest) returns (AnalyzeRoadMarkingResponse);
+    
+    // Проверка здоровья сервиса
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+} 
