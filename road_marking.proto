@@ -4,6 +4,8 @@ package road_marking;
 
 option go_package = "github.com/road-detector/proto/road_marking";
 
+import "google/protobuf/timestamp.proto";
+
 // Координаты точки
 message Coordinates {
     double lat = 1;  // Широта
@@ -17,6 +19,7 @@ message AnalyzeRoadMarkingRequest {
     Coordinates start_point = 3;             // Начальная точка маршрута
     Coordinates end_point = 4;               // Конечная точка маршрута
     int32 segment_length_m = 5;              // Длина сегмента в метрах
+    string route_id = 6;                     // ID маршрута для сохранения в БД
 }
 
 // Информация о сегменте
@@ -39,13 +42,81 @@ message OverallStats {
     double average_coverage = 6;             // Средний процент покрытия
 }
 
+// Маршрут как сущность
+message Route {
+    string id = 1;                           // Уникальный ID маршрута
+    string name = 2;                         // Название маршрута
+    Coordinates start_point = 3;             // Начальная точка
+    Coordinates end_point = 4;               // Конечная точка
+    int32 segment_length_m = 5;              // Длина сегмента в метрах
+    OverallStats overall_stats = 6;          // Общая статистика
+    repeated SegmentInfo segments = 7;       // Сегменты маршрута
+    google.protobuf.Timestamp created_at = 8;// Время создания
+    string video_filename = 9;               // Имя сохраненного видеофайла
+    string video_path = 10;                  // Путь к сохраненному видео
+}
+
 // Ответ с результатами анализа
 message AnalyzeRoadMarkingResponse {
     string status = 1;                       // Статус операции
-    OverallStats overall_stats = 2;          // Общая статистика
-    repeated SegmentInfo segments = 3;       // Информация о сегментах
-    Coordinates start_coordinates = 4;       // Начальные координаты
-    Coordinates end_coordinates = 5;         // Конечные координаты
+    string message = 2;                      // Сообщение
+    OverallStats overall_stats = 3;          // Общая статистика
+    repeated SegmentInfo segments = 4;       // Информация о сегментах
+    string route_id = 5;                     // ID сохраненного маршрута
+    string error_message = 6;                // Сообщение об ошибке (если есть)
+}
+
+// Запрос получения сегментов по координатам
+message GetSegmentsByAreaRequest {
+    Coordinates north_east = 1;              // Северо-восточный угол области
+    Coordinates south_west = 2;              // Юго-западный угол области
+}
+
+// Ответ с сегментами в области
+message GetSegmentsByAreaResponse {
+    string status = 1;                       // Статус операции
+    repeated Route routes = 2;               // Маршруты в области
+    int32 total_routes = 3;                  // Общее количество маршрутов
+    string error_message = 4;                // Сообщение об ошибке (если есть)
+}
+
+// Запрос на получение маршрута по ID
+message GetRouteRequest {
+    string route_id = 1;                     // ID маршрута
+}
+
+// Ответ с маршрутом
+message GetRouteResponse {
+    string status = 1;                       // Статус операции
+    Route route = 2;                         // Данные маршрута
+    string error_message = 3;                // Сообщение об ошибке (если есть)
+}
+
+// Запрос на удаление маршрута
+message DeleteRouteRequest {
+    string route_id = 1;                     // ID маршрута
+}
+
+// Ответ удаления маршрута
+message DeleteRouteResponse {
+    string status = 1;                       // Статус операции
+    string message = 2;                      // Сообщение
+    string error_message = 3;                // Сообщение об ошибке (если есть)
+}
+
+// Запрос списка всех маршрутов
+message ListRoutesRequest {
+    int32 page = 1;                          // Номер страницы
+    int32 page_size = 2;                     // Размер страницы
+}
+
+// Ответ со списком маршрутов
+message ListRoutesResponse {
+    string status = 1;                       // Статус операции
+    repeated Route routes = 2;               // Список маршрутов
+    int32 total_routes = 3;                  // Общее количество маршрутов
+    int32 page = 4;                          // Текущая страница
+    int32 page_size = 5;                     // Размер страницы
     string error_message = 6;                // Сообщение об ошибке (если есть)
 }
 
@@ -58,12 +129,25 @@ message HealthCheckResponse {
     string status = 1;                       // Статус сервиса
     bool model_loaded = 2;                   // Загружена ли модель
     string version = 3;                      // Версия сервиса
+    bool database_connected = 4;             // Подключена ли БД
 }
 
 // Сервис для анализа дорожной разметки
 service RoadMarkingService {
     // Анализ дорожной разметки в видео
     rpc AnalyzeRoadMarking(AnalyzeRoadMarkingRequest) returns (AnalyzeRoadMarkingResponse);
+    
+    // Получение сегментов по области координат
+    rpc GetSegmentsByArea(GetSegmentsByAreaRequest) returns (GetSegmentsByAreaResponse);
+    
+    // Получение маршрута по ID
+    rpc GetRoute(GetRouteRequest) returns (GetRouteResponse);
+    
+    // Удаление маршрута по ID
+    rpc DeleteRoute(DeleteRouteRequest) returns (DeleteRouteResponse);
+    
+    // Получение списка всех маршрутов
+    rpc ListRoutes(ListRoutesRequest) returns (ListRoutesResponse);
     
     // Проверка здоровья сервиса
     rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
